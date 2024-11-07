@@ -1,0 +1,623 @@
+---
+title: "LanternfliesData"
+output: 
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+
+---
+
+This R Notebook allows us to test for relationship between bodysize metrics and thermal tolerance. 
+
+Loading all packages:
+```{r}
+library(tidyverse)
+library(car)
+```
+Importing Data:
+```{r}
+
+h1 <- read_csv("/Users/survanisinha/Downloads/Lantern Fly Data Collection _ GSSRP '24 - Hot.csv")
+c1 <- read_csv("/Users/survanisinha/Downloads/Lantern Fly Data Collection _ GSSRP '24 - Cold.csv")
+
+```
+```{r}
+#Separating into male & female data sets
+
+#subset to male data
+hotmales <- h1 %>%
+  filter(`Sex(M/F)` == 'M') %>%
+  select(`ID`, `Length-Nosetoabdomen(mm)`, `Length-NosetoWingtip(mm)`, `AbdomenLength(mm)`, `Weight(g)`, `CTmax(s)`, `Temperature(C)`)
+
+coldmales <- c1 %>%
+  filter(`Sex(M/F)` == 'Male') %>%
+  select(`ID`, `Length-Nosetoabdomen(mm)`, `Length-NosetoWingtip(mm)`, `AbdomenLength(mm)`, `Weight(g)`, `CTmin(s)`, `Temperature(C)`)
+
+#subset to female data
+hotfemales <- h1 %>%
+  filter(`Sex(M/F)` == 'F') %>%
+  select(`ID`, `Length-Nosetoabdomen(mm)`, `Length-NosetoWingtip(mm)`, `AbdomenLength(mm)`, `Weight(g)`, `CTmax(s)`, `Temperature(C)`)
+
+coldfemales <- c1 %>%
+  filter(`Sex(M/F)` == 'Female') %>%
+  select(`ID`, `Length-Nosetoabdomen(mm)`, `Length-NosetoWingtip(mm)`, `AbdomenLength(mm)`, `Weight(g)`, `CTmin(s)`, `Temperature(C)`)
+
+coldmales$`CTmin(s)LOG` <- log(coldmales$`CTmin(s)`)
+coldfemales$`CTmin(s)LOG` <- log(coldfemales$`CTmin(s)`)
+
+hotmales$`CTmax(s)LOG` <- log(hotmales$`CTmax(s)`)
+hotfemales$`CTmax(s)LOG` <- log(hotfemales$`CTmax(s)`)
+```
+Removing extraneous data:
+```{r}
+#coldfemales
+rowsToRemove <- c(21, 20, 27, 9, 4, 3) 
+coldfemalesRowsRemoved <- coldfemales[-rowsToRemove, ]
+
+#coldmales
+rowsToRemove <- c(46, 27, 6, 2, 1) 
+coldmalesRowsRemoved <- coldmales[-rowsToRemove, ]
+
+#hotfemales
+rowsToRemove <- c(2, 3, 4, 8) 
+hotfemalesRowsRemoved <- hotfemales[-rowsToRemove, ]
+
+#hotmales
+rowsToRemove <- c(2) 
+hotmalesRowsRemoved <- hotmales[-rowsToRemove, ]
+```
+Graph Creating for Entire Data Set:
+```{r}
+#HOT
+
+#plotting weight vs sex
+ggplot(data = h1, mapping = aes(x = `Sex(M/F)`, y = `Weight(g)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "red") + ggtitle("Weight(g) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Weight (g)")
+
+#plotting CTmax(s) vs sex
+ggplot(data = h1, mapping = aes(x = `Sex(M/F)`, y = `CTmax(s)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "red") + ggtitle("CTmax(s) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "CTmax (s)")
+
+#plotting Length-Nosetoabdomen(mm) vs sex
+ggplot(data = h1, mapping = aes(x = `Sex(M/F)`, y = `Length-Nosetoabdomen(mm)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "red") + ggtitle("Length-Nose to Abdomen(mm) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Length from Nose to Abdomen (mm)")
+
+#plotting Length-NosetoWingtip(mm) vs sex
+ggplot(data = h1, mapping = aes(x = `Sex(M/F)`, y = `Length-NosetoWingtip(mm)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "red") + ggtitle("Length-Nose to Wingtip(mm) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Length from Nose to Wingtip (mm)")
+
+#plotting AbdomenLength(mm) vs sex
+ggplot(data = h1, mapping = aes(x = `Sex(M/F)`, y = `AbdomenLength(mm)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "red") + ggtitle("Abdomen Length(mm) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Abdomen Length (mm)")
+
+#plotting Length-Nosetoabdomen(mm) vs AbdomenLength(mm)
+ggplot(data = h1, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "red") + ggtitle("Length-Nose to Abdomen(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Abdomen (mm)")
+
+#plotting Length-NosetoWingtip(mm) vs AbdomenLength(mm)
+ggplot(data = h1, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "red") + ggtitle("Length-Nose to Wingtip(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Wingtip (mm)")
+
+#plotting Weight(g) vs AbdomenLength(mm)
+ggplot(data = h1, mapping = aes(x = `AbdomenLength(mm)`, y = `Weight(g)`)) + geom_point(color = "red") + ggtitle("Weight(g) vs AbdmenLength(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Weight (g)")
+
+#plotting CTmax(s) vs AbdomenLength(mm)
+ggplot(data = h1, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("CTmax(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs Weight(g)
+ggplot(data = h1, mapping = aes(x = `Weight(g)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("CTmax(s) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "CTmax (s)")
+
+#plotting Length-Nosetoabdomen(mm) vs Weight (g)
+ggplot(data = h1, mapping = aes(x = `Weight(g)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "red") + ggtitle("Length-Nose to Abdomen vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Abdomen (g)")
+
+#plotting Length-NosetoWingtip(mm) vs Weight (g)
+ggplot(data = h1, mapping = aes(x = `Weight(g)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "red") + ggtitle("Length-Nose to Wingtip(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Wingtip (g)")
+
+#plotting AbdomenLength(mm) vs Weight (g)
+ggplot(data = h1, mapping = aes(x = `Weight(g)`, y = `AbdomenLength(mm)`)) + geom_point(color = "red") + ggtitle("Abdomen Length(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Abdomen Length (g)")
+
+#plotting CTmax(s) vs Length-Nosetoabdomen(mm))
+ggplot(data = h1, mapping = aes(x = `Length-Nosetoabdomen(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("CTmax(s) vs Length-Nose to Abdomen(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Length from Nose to abdomen (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs Length-NosetoWingtip(mm))
+ggplot(data = h1, mapping = aes(x = `Length-NosetoWingtip(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("CTmax(s) vs Length-Nose to Wingtip(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Length from Nose to Wingtip (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs AbdomenLength(mm))
+ggplot(data = h1, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("CTmax(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmax (s)")
+
+#----
+
+#COLD
+
+#plotting weight vs sex
+ggplot(data = c1, mapping = aes(x = `Sex(M/F)`, y = `Weight(g)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "blue") + ggtitle("Weight(g) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Weight (g)")
+
+#plotting CTmin(s) vs sex
+ggplot(data = c1, mapping = aes(x = `Sex(M/F)`, y = `CTmin(s)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "blue") + ggtitle("CTmin(s) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "CTmin (s)")
+
+#plotting Length-Nosetoabdomen(mm) vs sex
+ggplot(data = c1, mapping = aes(x = `Sex(M/F)`, y = `Length-Nosetoabdomen(mm)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "blue") + ggtitle("Length-Nose to Abdomen(mm) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Length from Nose to Abdomen (mm)")
+
+#plotting Length-NosetoWingtip(mm) vs sex
+ggplot(data = c1, mapping = aes(x = `Sex(M/F)`, y = `Length-NosetoWingtip(mm)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "blue") + ggtitle("Length-Nose to Wingtip(mm) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Length from Nose to Wingtip (mm)")
+
+#plotting AbdomenLength(mm) vs sex
+ggplot(data = c1, mapping = aes(x = `Sex(M/F)`, y = `AbdomenLength(mm)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "blue") + ggtitle("Abdomen Length(mm) vs Sex(M/F)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Sex (M/F)", y = "Abdomen Length (mm)")
+
+#plotting Length-Nosetoabdomen(mm) vs AbdomenLength(mm)
+ggplot(data = c1, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "blue") + ggtitle("Length-Nose to Abdomen(mm) vs AbdomenLength(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Abdomen (mm)")
+
+#plotting Length-NosetoWingtip(mm) vs AbdomenLength(mm)
+ggplot(data = c1, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "blue") + ggtitle("Length-Nose to Wingtip(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Wingtip (mm)")
+
+#plotting Weight(g) vs AbdomenLength(mm)
+ggplot(data = c1, mapping = aes(x = `AbdomenLength(mm)`, y = `Weight(g)`)) + geom_point(color = "blue") + ggtitle("Weight(g) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Weight(g)")
+
+#plotting CTmin(s) vs AbdomenLength(mm)
+ggplot(data = c1, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("CTmin(s) vs Abdomen Length (mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs Weight(g)
+ggplot(data = c1, mapping = aes(x = `Weight(g)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("CTmin(s) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "CTmin (s)")
+
+#plotting Length-Nosetoabdomen(mm) vs Weight (g)
+ggplot(data = c1, mapping = aes(x = `Weight(g)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "blue") + ggtitle("Length-Nose to Abdomen(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Abdomen (g)")
+
+#plotting Length-NosetoWingtip(mm) vs Weight (g)
+ggplot(data = c1, mapping = aes(x = `Weight(g)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "blue") + ggtitle("Length-Nose to Wingtip(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Wingtip (g)")
+
+#plotting AbdomenLength(mm) vs Weight (g)
+ggplot(data = c1, mapping = aes(x = `Weight(g)`, y = `AbdomenLength(mm)`)) + geom_point(color = "blue") + ggtitle("Abdomen Length(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Abdomen Length (g)")
+
+#plotting CTmin(s) vs Length-Nosetoabdomen(mm))
+ggplot(data = c1, mapping = aes(x = `Length-Nosetoabdomen(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("CTmin(s) vs Length-Nose to Abdomen(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Length from Nose to abdomen (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs Length-NosetoWingtip(mm))
+ggplot(data = c1, mapping = aes(x = `Length-NosetoWingtip(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("CTmin(s) vs Length-Nose to Wingtip(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Length from Nose to Wingtip (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs AbdomenLength(mm)
+ggplot(data = c1, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("CTmin(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmin (s)")
+```
+Graphing based on sex:
+```{r}
+#HOT
+
+#females
+
+# #plotting Length-Nosetoabdomen(mm) vs AbdomenLength(mm)
+# ggplot(data = hotfemales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "red") + ggtitle("Hot Female: Length-Nose to Abdomen(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Abdomen (mm)")
+# 
+# #plotting Length-NosetoWingtip(mm) vs AbdomenLength(mm)
+# ggplot(data = hotfemales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "red") + ggtitle("Hot Female: Length-Nose to Wingtip(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Wingtip (mm)")
+# 
+# #plotting Weight(g) vs AbdomenLength(mm)
+# ggplot(data = hotfemales, mapping = aes(x = `AbdomenLength(mm)`, y = `Weight(g)`)) + geom_point(color = "red") + ggtitle("Hot Female: Weight(g) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Weight(g)")
+
+#plotting CTmax(s) vs AbdomenLength(mm)
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Female: CTmax(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs Weight(g)
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Female: CT max(s) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "CTmax (s)")
+
+# #plotting Length-Nosetoabdomen(mm) vs Weight (g)
+# ggplot(data = hotfemales, mapping = aes(x = `Weight(g)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "red") + ggtitle("Hot Female: Length-Nose to Abdomen(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Abdomen (g)")
+# 
+#plotting Length-NosetoWingtip(mm) vs Weight (g)
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "red") + ggtitle("Hot Female: Length-Nose to Wingtip (mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Wingtip (g)")
+
+# #plotting AbdomenLength(mm) vs Weight (g)
+# ggplot(data = hotfemales, mapping = aes(x = `Weight(g)`, y = `AbdomenLength(mm)`)) + geom_point(color = "red") + ggtitle("Hot Female: Abdomen Length(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Abdomen Length (g)")
+
+#plotting CTmax(s) vs Length-Nosetoabdomen(mm))
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `Length-Nosetoabdomen(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Female: CTmax(s) vs Length-Nose to Abdomen(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Length from Nose to abdomen (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs Length-NosetoWingtip(mm))
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `Length-NosetoWingtip(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Female: CTmax(s) vs Length-Nose to Wingtip(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Length from Nose to Wingtip (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs AbdomenLength(mm))
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Female: CTmax(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmax (s)")
+
+# #box plot for distribution of CTmax 
+# ggplot(data = h1, mapping = aes(x = `ID`, y = `CTmax(s)`)) + geom_boxplot() + geom_jitter(alpha = 0.3, color = "red") + ggtitle("CTmax(s) vs Lanternflies") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "ID", y = "CTmax(s)")
+
+#males
+
+
+# #plotting Length-Nosetoabdomen(mm) vs AbdomenLength(mm)
+# ggplot(data = hotmales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "red") + ggtitle("Hot Male: Length-Nose to Abdomen(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Abdomen (mm)")
+# 
+# #plotting Length-NosetoWingtip(mm) vs AbdomenLength(mm)
+# ggplot(data = hotmales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "red") + ggtitle("Hot Male: Length-Nose to Wingtip(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Wingtip (mm)")
+# 
+# #plotting Weight(g) vs AbdomenLength(mm)
+# ggplot(data = hotmales, mapping = aes(x = `AbdomenLength(mm)`, y = `Weight(g)`)) + geom_point(color = "red") + ggtitle("Hot Male: Weight(g) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Weight(g)")
+
+#plotting CTmax(s) vs AbdomenLength(mm)
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Male: CTmax(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs Weight(g)
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Male: CTmax(s) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "CTmax (s)")
+
+# #plotting Length-Nosetoabdomen(mm) vs Weight (g)
+# ggplot(data = hotmales, mapping = aes(x = `Weight(g)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "red") + ggtitle("Hot Male: Length-Nose to Abdomen(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Abdomen (g)")
+# 
+#plotting Length-NosetoWingtip(mm) vs Weight (g)
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "red") + ggtitle("Hot Male: Length-Nose to Wingtip(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Wingtip (g)")
+
+# #plotting AbdomenLength(mm) vs Weight (g)
+# ggplot(data = hotmales, mapping = aes(x = `Weight(g)`, y = `AbdomenLength(mm)`)) + geom_point(color = "red") + ggtitle("Hot Male: Abdomen Length(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Abdomen Length (g)")
+
+#plotting CTmax(s) vs Length-Nosetoabdomen(mm))
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `Length-Nosetoabdomen(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Male: CTmax(s) vs Length-Nose to Abdomen(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Length from Nose to abdomen (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs Length-NosetoWingtip(mm))
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `Length-NosetoWingtip(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Male: CTmax(s) vs Length-Nose to Wingtip(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Length from Nose to Wingtip (mm)", y = "CTmax (s)")
+
+#plotting CTmax(s) vs AbdomenLength(mm))
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmax(s)`)) + geom_point(color = "red") + ggtitle("Hot Male: CTmax(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="red", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmax (s)")
+
+#----
+
+#COLD
+
+#females
+
+# #plotting Length-Nosetoabdomen(mm) vs AbdomenLength(mm)
+# ggplot(data = coldfemales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Female: Length-Nose to Abdomen(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Abdomen (mm)")
+# 
+# #plotting Length-NosetoWingtip(mm) vs AbdomenLength(mm)
+# ggplot(data = coldfemales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Female: Length-Nose to Wingtip(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Wingtip (mm)")
+# 
+# #plotting Weight(g) vs AbdomenLength(mm)
+# ggplot(data = coldfemales, mapping = aes(x = `AbdomenLength(mm)`, y = `Weight(g)`)) + geom_point(color = "blue") + ggtitle("Cold Female: Weight(g) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Weight(g)")
+
+#plotting CTmin(s) vs AbdomenLength(mm)
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Female: CTmin(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs Weight(g)
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Female: CTmin(s) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "CTmin (s)")
+
+# #plotting Length-Nosetoabdomen(mm) vs Weight (g)
+# ggplot(data = coldfemales, mapping = aes(x = `Weight(g)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Female: Length-Nose to Abdomen(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Abdomen (g)")
+# 
+#plotting Length-NosetoWingtip(mm) vs Weight (g)
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Female: Length-Nose to Wingtip(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Wingtip (g)")
+
+# #plotting AbdomenLength(mm) vs Weight (g)
+# ggplot(data = coldfemales, mapping = aes(x = `Weight(g)`, y = `AbdomenLength(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Female: Abdomen Length(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Abdomen Length (g)")
+
+#plotting CTmin(s) vs Length-Nosetoabdomen(mm))
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `Length-Nosetoabdomen(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Female: CTmin(s) vs Length-Nose to Abdomen(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Length from Nose to abdomen (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs Length-NosetoWingtip(mm))
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `Length-NosetoWingtip(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Female: CTmin(s) vs Length-Nose to Wingtip(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Length from Nose to Wingtip (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs AbdomenLength(mm))
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Female: CTmin(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmin (s)")
+
+#males
+
+# #plotting Length-Nosetoabdomen(mm) vs AbdomenLength(mm)
+# ggplot(data = coldmales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Male: Length-Nose to Abdomen(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Abdomen (mm)")
+# 
+# #plotting Length-NosetoWingtip(mm) vs AbdomenLength(mm)
+# ggplot(data = coldmales, mapping = aes(x = `AbdomenLength(mm)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Male: Length-Nose to Wingtip(mm) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Length from Nose to Wingtip (mm)")
+# 
+# #plotting Weight(g) vs AbdomenLength(mm)
+# ggplot(data = coldmales, mapping = aes(x = `AbdomenLength(mm)`, y = `Weight(g)`)) + geom_point(color = "blue") + ggtitle("Cold Male: Weight(g) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "Weight(g)")
+
+#plotting CTmin(s) vs AbdomenLength(mm)
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Male: CTmin(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs Weight(g)
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Male: CTmin(s) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "CTmin (s)")
+
+# #plotting Length-Nosetoabdomen(mm) vs Weight (g)
+# ggplot(data = coldmales, mapping = aes(x = `Weight(g)`, y = `Length-Nosetoabdomen(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Male: Length-Nose to Abdomen(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Abdomen (g)")
+# 
+#plotting Length-NosetoWingtip(mm) vs Weight (g)
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `Length-NosetoWingtip(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Male: Length-Nose to Wingtip(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Length from Nose to Wingtip (g)")
+
+# #plotting AbdomenLength(mm) vs Weight (g)
+# ggplot(data = coldmales, mapping = aes(x = `Weight(g)`, y = `AbdomenLength(mm)`)) + geom_point(color = "blue") + ggtitle("Cold Male: Abdomen Length(mm) vs Weight(g)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Weight (g)", y = "Abdomen Length (g)")
+
+#plotting CTmin(s) vs Length-Nosetoabdomen(mm)
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `Length-Nosetoabdomen(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Male: CTmin(s) vs Length-Nose to Abdomen(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Length from Nose to abdomen (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs Length-NosetoWingtip(mm)
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `Length-NosetoWingtip(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Male: CTmin(s) vs Length-Nose to Wingtip(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Length from Nose to Wingtip (mm)", y = "CTmin (s)")
+
+#plotting CTmin(s) vs AbdomenLength(mm)
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `AbdomenLength(mm)`, y = `CTmin(s)`)) + geom_point(color = "blue") + ggtitle("Cold Male: CTmin(s) vs Abdomen Length(mm)") + theme(plot.title = element_text(hjust = 0.5, color="blue", size=14, face="bold.italic")) + labs(x = "Abdomen Length (mm)", y = "CTmin (s)")
+
+```
+Summary Stats:
+```{r}
+nrow(coldmalesRowsRemoved)
+nrow(hotmalesRowsRemoved)
+nrow(coldfemalesRowsRemoved)
+nrow(hotfemalesRowsRemoved)
+```
+Running Linear Models on relationship between WEIGHT and CTmin/max:
+```{r}
+# HotFemaleWeightlm <- lm(`CTmax(s)` ~ `Weight(g)`, data = hotfemalesRowsRemoved)
+# summary(HotFemaleWeightlm)
+# 
+# HotMaleWeightlm <- lm(`CTmax(s)` ~ `Weight(g)`, data = hotmalesRowsRemoved)
+# summary(HotMaleWeightlm)
+# 
+# ColdFemaleWeightlm <- lm(`CTmin(s)` ~ `Weight(g)`, data = coldfemalesRowsRemoved)
+# summary(ColdFemaleWeightlm)
+# 
+# ColdMaleWeightlm <- lm(`CTmin(s)` ~ `Weight(g)`, data = coldmalesRowsRemoved)
+# summary(ColdMaleWeightlm)
+#----
+HotFemaleWeightlmLOG <- lm(`CTmax(s)LOG` ~ `Weight(g)`, data = hotfemalesRowsRemoved)
+summary(HotFemaleWeightlmLOG)
+
+HotMaleWeightlmLOG <- lm(`CTmax(s)LOG` ~ `Weight(g)`, data = hotmalesRowsRemoved)
+summary(HotMaleWeightlmLOG)
+
+ColdFemaleWeightlmLOG <- lm(`CTmin(s)LOG` ~ `Weight(g)`, data = coldfemalesRowsRemoved)
+summary(ColdFemaleWeightlmLOG)
+
+ColdMaleWeightlmLOG <- lm(`CTmin(s)LOG` ~ `Weight(g)`, data = coldmalesRowsRemoved)
+summary(ColdMaleWeightlmLOG)
+```
+Checking Regression Assumptions for relationship between WEIGHT and CTmin/max:
+```{r}
+plot(HotFemaleWeightlmLOG, 1, main = "Hot Female between Weight and CTmax(LOG)")
+plot(HotMaleWeightlmLOG, 1, main = "Hot Male between Weight and CTmax(LOG)")
+plot(ColdFemaleWeightlmLOG, 1, main = "Cold Female between Weight and CTmin(LOG)")
+plot(ColdMaleWeightlmLOG, 1, main = "Cold Male between Weight and CTmin(LOG)")
+
+plot(HotFemaleWeightlmLOG, 3, main = "Hot Female between Weight and CTmax(LOG)")
+plot(HotMaleWeightlmLOG, 3, main = "Hot Male between Weight and CTmax(LOG)")
+plot(ColdFemaleWeightlmLOG, 3, main = "Cold Female between Weight and CTmin(LOG)")
+plot(ColdMaleWeightlmLOG, 3, main = "Cold Male between Weight and CTmin(LOG)")
+
+qqnorm(hotfemalesRowsRemoved$`CTmax(s)LOG`, main = "Q-Q Plot of CTmax for Hot Females (LOG)")
+qqline(hotfemalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(hotmalesRowsRemoved$`CTmax(s)LOG`, main = "Q-Q Plot of CTmax for Hot Males (LOG)")
+qqline(hotmalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldfemalesRowsRemoved$`CTmin(s)LOG`, main = "Q-Q Plot of CTmin for Cold Females (LOG)")
+qqline(coldfemalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldmalesRowsRemoved$`CTmin(s)LOG`, main = "Q-Q Plot of CTmin for Cold Males (LOG)")
+qqline(coldmalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+
+```
+Running Linear Models on relationship between LENGTH-NOSETOWINGTIP and CTmin/max:
+```{r}
+HotFemaleLengthNosetoWingtiplm <- lm(`CTmax(s)` ~ `Length-NosetoWingtip(mm)`, data = hotfemalesRowsRemoved)
+summary(HotFemaleLengthNosetoWingtiplm)
+
+HotMaleLengthNosetoWingtiplm <- lm(`CTmax(s)` ~ `Length-NosetoWingtip(mm)`, data = hotmalesRowsRemoved)
+summary(HotMaleLengthNosetoWingtiplm)
+
+ColdFemaleLengthNosetoWingtiplm <- lm(`CTmin(s)` ~ `Length-NosetoWingtip(mm)`, data = coldfemalesRowsRemoved)
+summary(ColdFemaleLengthNosetoWingtiplm)
+
+ColdMaleLengthNosetoWingtiplm <- lm(`CTmin(s)` ~ `Length-NosetoWingtip(mm)`, data = coldmalesRowsRemoved)
+summary(ColdMaleLengthNosetoWingtiplm)
+
+#-----
+print('LOG adjusted:')
+
+HotFemaleLengthNosetoWingtiplmLOG <- lm(`CTmax(s)LOG` ~ `Length-NosetoWingtip(mm)`, data = hotfemalesRowsRemoved)
+summary(HotFemaleLengthNosetoWingtiplmLOG)
+
+HotMaleLengthNosetoWingtiplmLOG <- lm(`CTmax(s)LOG` ~ `Length-NosetoWingtip(mm)`, data = hotmalesRowsRemoved)
+summary(HotMaleLengthNosetoWingtiplmLOG)
+
+ColdFemaleLengthNosetoWingtiplmLOG <- lm(`CTmin(s)LOG` ~ `Length-NosetoWingtip(mm)`, data = coldfemalesRowsRemoved)
+summary(ColdFemaleLengthNosetoWingtiplmLOG)
+
+ColdMaleLengthNosetoWingtiplmLOG <- lm(`CTmin(s)LOG` ~ `Length-NosetoWingtip(mm)`, data = coldmalesRowsRemoved)
+summary(ColdMaleLengthNosetoWingtiplmLOG)
+```
+Checking Regression Assumptions for relationship between LENGTH-NOSETOWINGTIP and CTmin/max:
+```{r}
+# plot(HotFemaleLengthNosetoWingtiplm, 1, main = "Hot Female")
+# plot(HotMaleLengthNosetoWingtiplm, 1, main = "Hot Male")
+# plot(ColdFemaleLengthNosetoWingtiplm, 1, main = "Cold Female")
+# plot(ColdMaleLengthNosetoWingtiplm, 1, main = "Cold Male")
+# 
+# plot(HotFemaleLengthNosetoWingtiplm, 3, main = "Hot Female")
+# plot(HotMaleLengthNosetoWingtiplm, 3, main = "Hot Male")
+# plot(ColdFemaleLengthNosetoWingtiplm, 3, main = "Cold Female")
+# plot(ColdMaleLengthNosetoWingtiplm, 3, main = "Cold Male")
+# 
+# qqnorm(hotfemalesRowsRemoved$`CTmax(s)`, main = "Q-Q Plot of CTmax for Hot Females")
+# qqline(hotfemalesRowsRemoved$`CTmax(s)`, col = "steelblue", lwd = 2)
+# 
+# qqnorm(hotmalesRowsRemoved$`CTmax(s)`, main = "Q-Q Plot of CTmax for Hot Males")
+# qqline(hotmalesRowsRemoved$`CTmax(s)`, col = "steelblue", lwd = 2)
+# 
+# qqnorm(coldfemalesRowsRemoved$`CTmin(s)`, main = "Q-Q Plot of CTmin for Cold Females")
+# qqline(coldfemalesRowsRemoved$`CTmin(s)`, col = "steelblue", lwd = 2)
+# 
+# qqnorm(coldmalesRowsRemoved$`CTmin(s)`, main = "Q-Q Plot of CTmin for Cold Males")
+# qqline(coldmalesRowsRemoved$`CTmin(s)`, col = "steelblue", lwd = 2)
+
+#----
+print("LOG adjusted")
+
+plot(HotFemaleLengthNosetoWingtiplmLOG, 1, main = "Hot Female (LOG)")
+plot(HotMaleLengthNosetoWingtiplmLOG, 1, main = "Hot Male (LOG)")
+plot(ColdFemaleLengthNosetoWingtiplmLOG, 1, main = "Cold Female (LOG)")
+plot(ColdMaleLengthNosetoWingtiplmLOG, 1, main = "Cold Male (LOG)")
+
+plot(HotFemaleLengthNosetoWingtiplmLOG, 3, main = "Hot Female (LOG)")
+plot(HotMaleLengthNosetoWingtiplmLOG, 3, main = "Hot Male (LOG)")
+plot(ColdFemaleLengthNosetoWingtiplmLOG, 3, main = "Cold Female (LOG)")
+plot(ColdMaleLengthNosetoWingtiplmLOG, 3, main = "Cold Male (LOG)")
+
+qqnorm(hotfemalesRowsRemoved$`CTmax(s)LOG`, main = "Q-Q Plot of CTmax for Hot Females (LOG)")
+qqline(hotfemalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(hotmalesRowsRemoved$`CTmax(s)LOG`, main = "Q-Q Plot of CTmax for Hot Males (LOG)")
+qqline(hotmalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldfemalesRowsRemoved$`CTmin(s)LOG`, main = "Q-Q Plot of CTmin for Cold Females (LOG)")
+qqline(coldfemalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldmalesRowsRemoved$`CTmin(s)LOG`, main = "Q-Q Plot of CTmin for Cold Males (LOG)")
+qqline(coldmalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+```
+Running Linear Models on relationship between ABDOMEN LENGTH and CTmin/max:
+```{r}
+HotFemaleAbdomenlm <- lm(`CTmax(s)` ~ `AbdomenLength(mm)`, data = hotfemalesRowsRemoved)
+summary(HotFemaleAbdomenlm)
+
+HotMaleAbdomenlm <- lm(`CTmax(s)` ~ `AbdomenLength(mm)`, data = hotmalesRowsRemoved)
+summary(HotMaleAbdomenlm)
+
+ColdFemaleAbdomenlm <- lm(`CTmin(s)` ~ `AbdomenLength(mm)`, data = coldfemalesRowsRemoved)
+summary(ColdFemaleAbdomenlm)
+
+ColdMaleAbdomenlm <- lm(`CTmin(s)` ~ `AbdomenLength(mm)`, data = coldmalesRowsRemoved)
+summary(ColdMaleAbdomenlm)
+
+#----
+
+HotFemaleAbdomenlmLOG <- lm(`CTmax(s)LOG` ~ `AbdomenLength(mm)`, data = hotfemalesRowsRemoved)
+summary(HotFemaleAbdomenlmLOG)
+
+HotMaleAbdomenlmLOG <- lm(`CTmax(s)LOG` ~ `AbdomenLength(mm)`, data = hotmalesRowsRemoved)
+summary(HotMaleAbdomenlmLOG)
+
+ColdFemaleAbdomenlmLOG <- lm(`CTmin(s)LOG` ~ `AbdomenLength(mm)`, data = coldfemalesRowsRemoved)
+summary(ColdFemaleAbdomenlmLOG)
+
+ColdMaleAbdomenlmLOG <- lm(`CTmin(s)LOG` ~ `AbdomenLength(mm)`, data = coldmalesRowsRemoved)
+summary(ColdMaleAbdomenlmLOG)
+```
+Checking Regression Assumptions for relationship between ABDOMEN LENGTH and CTmin/max:
+```{r}
+plot(HotFemaleAbdomenlm, 1)
+plot(HotMaleAbdomenlm, 1)
+plot(ColdFemaleAbdomenlm, 1)
+plot(ColdMaleAbdomenlm, 1)
+
+plot(HotFemaleAbdomenlm, 3)
+plot(HotMaleAbdomenlm, 3)
+plot(ColdFemaleAbdomenlm, 3)
+plot(ColdMaleAbdomenlm, 3)
+
+qqnorm(hotfemalesRowsRemoved$`CTmax(s)`)
+qqline(hotfemalesRowsRemoved$`CTmax(s)`, col = "steelblue", lwd = 2)
+
+qqnorm(hotmalesRowsRemoved$`CTmax(s)`)
+qqline(hotmalesRowsRemoved$`CTmax(s)`, col = "steelblue", lwd = 2)
+
+qqnorm(coldfemalesRowsRemoved$`CTmin(s)`)
+qqline(coldfemalesRowsRemoved$`CTmin(s)`, col = "steelblue", lwd = 2)
+
+qqnorm(coldmalesRowsRemoved$`CTmin(s)`)
+qqline(coldmalesRowsRemoved$`CTmin(s)`, col = "steelblue", lwd = 2)
+
+#---
+
+plot(HotFemaleAbdomenlmLOG, 1)
+plot(HotMaleAbdomenlmLOG, 1)
+plot(ColdFemaleAbdomenlmLOG, 1)
+plot(ColdMaleAbdomenlmLOG, 1)
+
+plot(HotFemaleAbdomenlmLOG, 3)
+plot(HotMaleAbdomenlmLOG, 3)
+plot(ColdFemaleAbdomenlmLOG, 3)
+plot(ColdMaleAbdomenlmLOG, 3)
+
+qqnorm(hotfemalesRowsRemoved$`CTmax(s)LOG`)
+qqline(hotfemalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(hotmalesRowsRemoved$`CTmax(s)LOG`)
+qqline(hotmalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldfemalesRowsRemoved$`CTmin(s)LOG`)
+qqline(coldfemalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldmalesRowsRemoved$`CTmin(s)LOG`)
+qqline(coldmalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+```
+Running Linear Models on relationship between LENGTH-NOSETOABDOMEN and CTmin/max:
+```{r}
+HotFemaleLengthNosetoAbdomenlmLOG <- lm(`CTmax(s)LOG` ~ `Length-Nosetoabdomen(mm)`, data = hotfemalesRowsRemoved)
+summary(HotFemaleLengthNosetoAbdomenlmLOG)
+
+HotMaleLengthNosetoAbdomenlmLOG <- lm(`CTmax(s)LOG` ~ `Length-Nosetoabdomen(mm)`, data = hotmalesRowsRemoved)
+summary(HotMaleLengthNosetoAbdomenlmLOG)
+
+ColdFemaleLengthNosetoAbdomenlmLOG <- lm(`CTmin(s)LOG` ~ `Length-Nosetoabdomen(mm)`, data = coldfemalesRowsRemoved)
+summary(ColdFemaleLengthNosetoAbdomenlmLOG)
+
+ColdMaleLengthNosetoAbdomenlmLOG <- lm(`CTmin(s)LOG` ~ `Length-Nosetoabdomen(mm)`, data = coldmalesRowsRemoved)
+summary(ColdMaleLengthNosetoAbdomenlmLOG)
+```
+Checking Regression Assumptions for relationship between LENGTH-NOSETOABDOMEN and CTmin/max:
+```{r}
+plot(HotFemaleLengthNosetoAbdomenlmLOG, 1, main = "Hot Female Length from Nose to Abdomen compared to CTmax(LOG)")
+plot(HotMaleLengthNosetoAbdomenlmLOG, 1, main = "Hot Male Length from Nose to Abdomen compared to CTmax(LOG)")
+plot(ColdFemaleLengthNosetoAbdomenlmLOG, 1, main = "Cold Female Length from Nose to Abdomen compared to CTmin(LOG)")
+plot(ColdMaleLengthNosetoAbdomenlmLOG, 1, main = "Cold Male Length from Nose to Abdomen compared to CTmin(LOG)")
+
+plot(HotFemaleLengthNosetoAbdomenlmLOG, 3, main = "Hot Female Length from Nose to Abdomen compared to CTmax(LOG)")
+plot(HotMaleLengthNosetoAbdomenlmLOG, 3, main = "Hot Male Length from Nose to Abdomen compared to CTmax(LOG)")
+plot(ColdFemaleLengthNosetoAbdomenlmLOG, 3, main = "Cold Female Length from Nose to Abdomen compared to CTmin(LOG)")
+plot(ColdMaleLengthNosetoAbdomenlmLOG, 3, main = "Cold Male Length from Nose to Abdomen compared to CTmin(LOG)")
+
+qqnorm(hotfemalesRowsRemoved$`CTmax(s)LOG`, main = "Q-Q Plot of CTmax for Hot Females (LOG)")
+qqline(hotfemalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(hotmalesRowsRemoved$`CTmax(s)LOG`, main = "Q-Q Plot of CTmax for Hot Males (LOG)")
+qqline(hotmalesRowsRemoved$`CTmax(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldfemalesRowsRemoved$`CTmin(s)LOG`, main = "Q-Q Plot of CTmin for Cold Females (LOG)")
+qqline(coldfemalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+
+qqnorm(coldmalesRowsRemoved$`CTmin(s)LOG`, main = "Q-Q Plot of CTmin for Cold Males (LOG)")
+qqline(coldmalesRowsRemoved$`CTmin(s)LOG`, col = "darkorchid4", lwd = 2)
+```
+Graphing Weight vs CTmin/max LOG transformed with Regression Lines:
+```{r}
+#Hot
+
+#plotting hot females: CTmax (log) vs Weight
+model <- lm(`CTmax(s)LOG` ~ `Weight(g)`, data = hotfemalesRowsRemoved)
+summary(model)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+equation <- paste("y =", round(intercept, 2), "+", round(slope, 2), "* x")
+p_value_text <- expression(paste(italic("p"), " = ", 0.0769))
+  
+ggplot(data = hotfemalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmax(s)LOG`)) + geom_point(color = "deeppink2") + geom_smooth(method = "lm", color = "red", se = FALSE) + ggtitle("Female Time to CT max (s)") + theme(plot.title = element_text(hjust = 0.5, color="black", size=18, face="bold"), axis.title.x = element_text(size = 16), axis.title.y = element_text(size = 16), axis.text.x = element_text(size = 14),axis.text.y = element_text(size = 14)) + labs(x = "Weight (g)", y = "Time to CTmax (s) (log)") + annotate("text", x = Inf, y = Inf, label = equation, hjust = 1.1, vjust = 1.5, color = "black", size = 5) + annotate("text", x = Inf, y = Inf, label = p_value_text, hjust = 1.1, vjust = 4.2, color = "black", size = 5)
+
+#plotting hot males: CTmax (log) vs Weight
+model <- lm(`CTmax(s)LOG` ~ `Weight(g)`, data = hotmalesRowsRemoved)
+summary(model)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+equation <- paste("y =", round(intercept, 2), "+", round(slope, 2), "* x")
+p_value_text <- expression(paste(italic("p"), " = ", 0.246))
+
+ggplot(data = hotmalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmax(s)LOG`)) + geom_point(color = "forestgreen") + geom_smooth(method = "lm", color = "red", se = FALSE) + ggtitle("Male Time to CT max (s)") + theme(plot.title = element_text(hjust = 0.5, color="black", size=18, face="bold"), axis.title.x = element_text(size = 16), axis.title.y = element_text(size = 16), axis.text.x = element_text(size = 14),axis.text.y = element_text(size = 14)) + labs(x = "Weight (g)", y = "Time to CTmax (s) (log)") + annotate("text", x = Inf, y = Inf, label = equation, hjust = 1.1, vjust = 1.5, color = "black", size = 5) + annotate("text", x = Inf, y = Inf, label = p_value_text, hjust = 1.1, vjust = 4.2, color = "black", size = 5)
+
+#Cold
+
+#plotting cold females: CTmin (log) vs Weight
+model <- lm(`CTmin(s)LOG` ~ `Weight(g)`, data = coldfemalesRowsRemoved)
+summary(model)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+equation <- paste("y =", round(intercept, 2), "+", round(slope, 2), "* x")
+p_value_text <- expression(paste(italic("p"), " = ", 4.59e-09))
+
+ggplot(data = coldfemalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmin(s)LOG`)) + geom_point(color = "deeppink2") + geom_smooth(method = "lm", color = "blue", se = FALSE) + ggtitle("Female Time to CT min (s)") + theme(plot.title = element_text(hjust = 0.5, color="black", size=18, face="bold"), axis.title.x = element_text(size = 16), axis.title.y = element_text(size = 16), axis.text.x = element_text(size = 14),axis.text.y = element_text(size = 14)) + labs(x = "Weight (g)", y = "Time to CTmin (s) (log)") + annotate("text", x = Inf, y = Inf, label = equation, hjust = 1.1, vjust = 1.5, color = "black", size = 5) + annotate("text", x = Inf, y = Inf, label = p_value_text, hjust = 1.1, vjust = 4.2, color = "black", size = 5)
+
+#plotting cold males: CTmin (log) vs Weight
+model <- lm(`CTmin(s)LOG` ~ `Weight(g)`, data = coldmalesRowsRemoved)
+summary(model)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+equation <- paste("y =", round(intercept, 2), "+", round(slope, 2), "* x")
+p_value_text <- expression(paste(italic("p"), " = ", 0.00754))
+
+ggplot(data = coldmalesRowsRemoved, mapping = aes(x = `Weight(g)`, y = `CTmin(s)LOG`)) + geom_point(color = "forestgreen") + geom_smooth(method = "lm", color = "blue", se = FALSE) + ggtitle("Male Time to CT min (s)") + theme(plot.title = element_text(hjust = 0.5, color="black", size=18, face="bold"), axis.title.x = element_text(size = 16), axis.title.y = element_text(size = 16), axis.text.x = element_text(size = 14),axis.text.y = element_text(size = 14)) + labs(x = "Weight (g)", y = "Time to CTmin (s) (log)") + annotate("text", x = Inf, y = Inf, label = equation, hjust = 1.1, vjust = 1.5, color = "black", size = 5) + annotate("text", x = Inf, y = Inf, label = p_value_text, hjust = 1.1, vjust = 4.2, color = "black", size = 5)
+```
+
